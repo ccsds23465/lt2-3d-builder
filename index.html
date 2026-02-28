@@ -1,162 +1,100 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>LT2 3D Image Builder</title>
-<style>
-body { margin:0; background:#111; color:white; font-family:sans-serif; text-align:center; }
-canvas { display:block; margin:auto; }
-.controls { padding:10px; }
-button { padding:10px; margin:5px; }
-</style>
-</head>
-<body>
-
-<h2>LT2 3D Image Builder</h2>
-
-<div class="controls">
-<input type="file" id="imageUpload">
-<br>
-Width: <input type="number" id="width" value="40">
-Height: <input type="number" id="height" value="40">
-Depth: <input type="number" id="depth" value="4">
-<br>
-<button onclick="generate()">Generate</button>
-<button onclick="downloadLua()">Download Lua</button>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-<script>
-
 const WOOD_COLORS = {
-    "Generic": [204,142,105],
-    "Oak": [234,184,146],
-    "Cherry": [163,75,75],
-    "Fir": [215,197,154],
-    "Birch": [205,205,205],
-    "Walnut": [105,64,40],
-    "Koa": [143,76,42],
-    "Volcano": [255,0,0],
-    "GreenSwampy": [52,142,64],
-    "GoldSwampy": [226,155,64],
-    "Palm": [226,220,188],
-    "SnowGlow": [255,255,0],
-    "Frost": [159,243,233],
-    "CaveCrawler": [16,42,220],
-    "BlueSpruce": [159,173,192],
-    "LoneCave": [248,248,248],
-    "Spooky": [170,85,0],
-    "SpookyNeon": [170,85,0]
+    "Oak": [234,184,146], "Cherry": [163,75,75], "Fir": [215,197,154], "Birch": [205,205,205], "Walnut": [105,64,40]
 };
-
+ 
 let scene, camera, renderer;
 let luaBlocks = [];
-
-function closestWood(rgb){
+ 
+function closestWood(rgb) {
     let minDist = Infinity;
-    let closest = "Generic";
-
-    for(let wood in WOOD_COLORS){
+    let closest = "Oak";
+    for (let wood in WOOD_COLORS) {
         let c = WOOD_COLORS[wood];
-        let dist =
-            (rgb[0]-c[0])**2 +
-            (rgb[1]-c[1])**2 +
-            (rgb[2]-c[2])**2;
-
-        if(dist < minDist){
+        let dist = (rgb[0] - c[0]) ** 2 + (rgb[1] - c[1]) ** 2 + (rgb[2] - c[2]) ** 2;
+        if (dist < minDist) {
             minDist = dist;
             closest = wood;
         }
     }
     return closest;
 }
-
-function init3D(){
+ 
+function init3D() {
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight*0.7);
+    renderer.setSize(window.innerWidth, window.innerHeight * 0.7);
     document.body.appendChild(renderer.domElement);
-
     camera.position.z = 80;
-
     const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(50,50,50);
+    light.position.set(50, 50, 50);
     scene.add(light);
-
     animate();
 }
-
-function animate(){
+ 
+function animate() {
     requestAnimationFrame(animate);
     scene.rotation.y += 0.005;
     renderer.render(scene, camera);
 }
-
-function generate(){
-
+ 
+function generate() {
     scene.clear();
     luaBlocks = [];
-
     const file = document.getElementById("imageUpload").files[0];
-    if(!file) return alert("Upload image first.");
-
+    if (!file) return alert("Upload image first.");
     const width = parseInt(document.getElementById("width").value);
     const height = parseInt(document.getElementById("height").value);
     const depth = parseInt(document.getElementById("depth").value);
-
     const img = new Image();
-    img.onload = function(){
-
+    img.onload = function () {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         canvas.width = width;
         canvas.height = height;
         ctx.drawImage(img, 0, 0, width, height);
-
-        for(let z=0; z<depth; z++){
-            for(let y=0; y<height; y++){
-                for(let x=0; x<width; x++){
-
-                    const pixel = ctx.getImageData(x,y,1,1).data;
-                    const wood = closestWood([pixel[0],pixel[1],pixel[2]]);
+        for (let z = 0; z < depth; z++) {
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const pixel = ctx.getImageData(x, y, 1, 1).data;
+                    const wood = closestWood([pixel[0], pixel[1], pixel[2]]);
                     const color = WOOD_COLORS[wood];
-
-                    const geometry = new THREE.BoxGeometry(1,1,1);
-                    const material = new THREE.MeshStandardMaterial({
-                        color: `rgb(${color[0]},${color[1]},${color[2]})`
-                    });
-
+                    const geometry = new THREE.BoxGeometry(1, 1, 1);
+                    const material = new THREE.MeshStandardMaterial({ color: `rgb(${color[0]},${color[1]},${color[2]})` });
                     const cube = new THREE.Mesh(geometry, material);
-                    cube.position.set(x-width/2, height-y, z-depth/2);
+                    cube.position.set(x - width / 2, height - y, z - depth / 2);
                     scene.add(cube);
-
-                    luaBlocks.push(
-                        `table.insert(blocks,{Size=Vector3.new(1,1,1),CFrame=CFrame.new(${x},${height-y},${z}),Wood="${wood}"})`
-                    );
+                    luaBlocks.push(`table.insert(blocks,{Size=Vector3.new(1,1,1),CFrame=CFrame.new(${x},${height-y},${z}),Wood="${wood}"})`);
                 }
             }
         }
     };
-
     img.src = URL.createObjectURL(file);
 }
-
-function downloadLua(){
+ 
+function downloadLua() {
     let lua = "local blocks = {}\n\n";
     lua += luaBlocks.join("\n");
     lua += "\n\nreturn blocks";
-
-    const blob = new Blob([lua], {type:"text/plain"});
+    const blob = new Blob([lua], { type: "text/plain" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "lt2_build.lua";
     link.click();
 }
-
+ 
+function autoBuild() {
+    const walkSpeed = document.getElementById("walkSpeed").value;
+    const treeType = document.getElementById("treeType").value;
+    const lua = `local walkSpeed = ${walkSpeed}\nlocal treeType = "${treeType}"\n\n`;
+    lua += `local blocks = {}\n\n`;
+    lua += luaBlocks.join("\n");
+    lua += `\n\nreturn {blocks, walkSpeed, treeType}`;
+    const blob = new Blob([lua], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "auto_build.lua";
+    link.click();
+}
+ 
 init3D();
-
-</script>
-</body>
-</html>
